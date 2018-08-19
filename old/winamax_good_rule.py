@@ -1,8 +1,9 @@
 # A ball with a shotcount N will jump by N cells in one direction, vertically or horizontally.
 # The shotcount is then decreased by 1 and the ball can jump again.
 
-import itertools
-import copy
+from cProfile import run as cProfile_run
+from itertools import product as itertools_product
+from copy import deepcopy as copy_deepcopy
 
 
 def get_ball_directions(ball, hole, distance, golf_course, water_just_crossed, previous_direction):
@@ -136,7 +137,6 @@ def get_next_coord(ball, direction):
     """
     :param ball: current ball coordinates
     :param direction: direction that ball follows
-    :param distance: distance the ball just run
     :return: ball coordinates after having passed the direction
     """
     if direction == "^":
@@ -173,19 +173,22 @@ def finalize_golf_course(golf_course):
 
 def update_golf_course(golf_course, ball, hole, distance, water_just_crossed, direction):
     # need to copy the list because of backtracking (to be able to go back to the previous state of golf course)
-    golf_course_to_update = copy.deepcopy(golf_course)
+    golf_course_to_update = copy_deepcopy(golf_course)
 
-    # start ball:
+    # start ball
     golf_course_to_update[ball[0]][ball[1]] = direction
     ball = get_next_coord(ball, direction)
 
+    # draws the path for the ball
     for i in range(1, distance):
         if golf_course_to_update[ball[0]][ball[1]] in {".", "X"}:
             golf_course_to_update[ball[0]][ball[1]] = direction
             ball = get_next_coord(ball, direction)
+        # the ball passes through another hole or path: fail
         else:
             return False, None, None, None
 
+    # checks where the ball just landed
     if golf_course_to_update[ball[0]][ball[1]] == "X":
         water_just_crossed = True
     elif golf_course_to_update[ball[0]][ball[1]] == "H" and ball != hole:
@@ -304,7 +307,7 @@ def constrained_permutations(init_golf_course, list_holes, list_balls, list_dist
     couples_not_possible = []
 
     # going to iterate the indices (nb_of_holes**nb_of_permuted_elt) times:
-    for indices in itertools.product(range(nb_of_holes), repeat=nb_of_permuted_elt):
+    for indices in itertools_product(range(nb_of_holes), repeat=nb_of_permuted_elt):
 
         # we select nb_of_permuted_elt within nb_of_holes (order counts)
         # to do that, we select only permutations without duplicate elements
@@ -320,7 +323,7 @@ def constrained_permutations(init_golf_course, list_holes, list_balls, list_dist
                         break
 
                 # for each new possible permutation, we deep-copy the golf course
-                golf_course = copy.deepcopy(init_golf_course)
+                golf_course = copy_deepcopy(init_golf_course)
                 list_dist_ball_hole = []
                 # for each (ball, hole) couple in the permutation, we check if there is a possible path
                 for i in range(nb_of_permuted_elt):
@@ -343,31 +346,115 @@ def constrained_permutations(init_golf_course, list_holes, list_balls, list_dist
 #######################################################################"
 #######################################################################"
 
-golf_course = [['.', 'X', 'X', 'X', '.', '5', 'X', '.'],
-               ['X', '.', '4', '.', 'X', '.', '.', 'X'],
-               ['X', '4', '.', '.', 'X', '3', '.', 'X'],
-               ['X', '.', '.', '.', 'X', '.', 'X', '.'],
-               ['.', 'X', '.', 'X', '.', 'H', '.', 'X'],
-               ['X', '.', 'H', 'X', '.', '.', '.', 'X'],
-               ['X', '.', '.', 'X', '.', 'H', '.', 'X'],
-               ['.', 'X', 'H', '.', 'X', 'X', 'X', '.']]
+def main():
+    golf_course = [
+        ['.', '.', '.', 'X', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'X', 'X', '.', '.', '.', '.',
+         '.', 'H', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'H', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.',
+         '.', '.', 'H', '.', '.', '.'],
+        ['.', 'X', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', '.', '.', '.', 'X', 'X', 'X', 'X', 'X', '.', '.', 'X',
+         'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', 'X', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', '.', '.', '.',
+         'X', 'X', 'X', 'X', 'X', '.'],
+        ['.', '.', '.', 'X', 'X', 'X', 'X', '.', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.',
+         '.', '.', '.', '.', 'X', '.', '.', '4', '.', '.', '.', '.', '.', '.', 'X', '.', '.', '4', '4', '.', '.', 'X',
+         '.', '.', '.', '.', '.', '.'],
+        ['.', '.', 'H', '5', 'X', 'X', '.', '.', '.', '.', '.', '.', '.', '.', 'X', 'X', '5', 'H', '.', '.', '.', '.',
+         'H', '5', 'X', 'X', '.', '.', '.', '.', '.', '.', 'H', '5', 'X', 'X', '.', '.', '.', '.', '.', '.', '.', '.',
+         'X', 'X', '5', 'X', '.', '.'],
+        ['.', '.', '.', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', '.', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.',
+         '.', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', '.', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', '.', 'X',
+         'X', 'X', 'X', 'X', 'X', 'X'],
+        ['.', '.', '.', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', '.', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.',
+         '.', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', '.', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', '.', 'X',
+         'X', 'X', 'X', '.', '.', 'X'],
+        ['.', '.', '.', '.', 'X', 'X', '4', '.', '.', '.', '.', '.', '.', '4', 'X', 'X', '.', '.', '.', '.', '.', '.',
+         '.', '.', 'X', 'X', '4', '.', '.', '.', '.', '.', '.', '.', 'X', 'X', '4', '.', '.', '.', '.', '.', '.', '4',
+         'X', 'X', '.', '.', '.', 'X'],
+        ['3', '.', '.', 'X', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'X', '.', '.', '3', '3', '.',
+         '.', 'X', '.', '.', '.', '.', 'X', '.', '3', '.', '.', 'X', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.',
+         '.', '.', 'X', '.', '.', 'X'],
+        ['.', '.', '.', '.', 'X', 'X', 'X', 'X', 'X', '.', '.', 'X', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', '.',
+         '.', '.', 'X', 'X', 'X', 'X', 'X', '.', '.', '.', '.', '.', 'X', 'X', 'X', 'X', 'X', '.', '.', 'X', 'X', 'X',
+         'X', 'X', '.', '.', '.', '.'],
+        ['.', '.', '.', '.', 'H', '.', 'H', '.', '.', '.', '.', '.', '.', 'H', '.', 'H', '.', '.', '.', '.', '.', '.',
+         '.', '.', 'H', '.', 'H', '.', '.', '.', '.', '.', '.', '.', 'H', '.', 'H', '.', '.', '.', '.', '.', '.', 'H',
+         '.', 'H', '.', '.', '.', '.']]
 
-coord_balls = [(0, 5), (1, 2), (2, 1), (2, 5)]
-coord_holes = [(4, 5), (5, 2), (6, 5), (7, 2)]
-dist_balls = [5, 4, 4, 3]
+    coord_balls = [(2, 29), (2, 39), (2, 40), (3, 3), (3, 16), (3, 23), (3, 33), (3, 46), (6, 6), (6, 13), (6, 26),
+                   (6, 36), (6, 43), (7, 0), (7, 19), (7, 20), (7, 30)]
+    coord_holes = [(0, 23), (0, 33), (0, 46), (3, 2), (3, 17), (3, 22), (3, 32), (9, 4), (9, 6), (9, 13), (9, 15),
+                   (9, 24), (9, 26), (9, 34), (9, 36), (9, 43), (9, 45)]
+    dist_balls = [4, 4, 4, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3]
 
-max_distance = len(golf_course) * len(golf_course[0])  # max distance balls can run (all the cell of the golf course)
-final_golf_course = []
+    max_distance = len(golf_course) * len(
+        golf_course[0])  # max distance balls can run (all the cell of the golf course)
+    final_golf_course = []
 
-# we analyze each possible "ball-to-hole" path (respecting balls distance)
-for golf_course_with_path, distances_ball_to_hole in constrained_permutations(golf_course, coord_holes, coord_balls,
-                                                                              dist_balls, len(coord_balls)):
+    # we analyze each possible "ball-to-hole" path (respecting balls distance)
+    for golf_course_with_path, distances_ball_to_hole in constrained_permutations(golf_course, coord_holes, coord_balls,
+                                                                                  dist_balls, len(coord_balls)):
 
-    # we select the golf course with the shortest paths
-    if distances_ball_to_hole < max_distance:
-        max_distance = distances_ball_to_hole
-        final_golf_course = golf_course_with_path
+        # we select the golf course with the shortest paths
+        if distances_ball_to_hole < max_distance:
+            max_distance = distances_ball_to_hole
+            final_golf_course = golf_course_with_path
 
-# replace "BinH" by "." and "X direction" by "direction"
-print(max_distance, final_golf_course)
-print(finalize_golf_course(final_golf_course))
+    # replace "BinH" by "." and "X direction" by "direction"
+    print(max_distance, final_golf_course)
+    print(finalize_golf_course(final_golf_course))
+
+
+# ###########################################################
+# ###########################################################
+#
+# class GolfCourse(object):
+#
+#
+# # golf course initialization
+#     def __init__(self):
+#         self.height = 0
+#         self.width = 0
+#         self.matrix = []
+#         self.balls = []
+#         self.coord_holes = []
+#
+#     # golf course representation
+#     def __repr__(self):
+#         return "nb rows: {0}, nb cols: {1}\nmatrix: {2}\ncoord_balls: {3}\ncoord_holes: {4}".format(self.height,
+#                                                                                                     self.width,
+#                                                                                                     self.matrix,
+#                                                                                                     self.balls,
+#                                                                                                     self.coord_holes)
+#
+# ###########################################################
+# ###########################################################
+#
+# # Auto-generated code below aims at helping you parse
+# # the standard input according to the problem statement.
+#
+# golf_course = GolfCourse()
+# golf_course.width, golf_course.height = [int(i) for i in input().split()]
+#
+# for row_index in range(golf_course.height):
+#     row = []
+#     for col_index, elt in enumerate(input()):
+#
+#         if elt.isnumeric():
+#             golf_course.balls.append(((row_index, col_index), int(elt)))
+#         elif elt == "H":
+#             golf_course.coord_holes.append((row_index, col_index))
+#
+#         row.append(elt)
+#     golf_course.matrix.append(row)
+#
+# print(golf_course)
+#
+# ###########################################################
+# ###########################################################
+#
+# ###########################################################
+# ###########################################################
+
+
+if __name__ == "__main__":
+    cProfile_run('main()')
+    # main()
